@@ -1,4 +1,4 @@
-.PHONY: help build up down logs shell exec pull-model test clean
+.PHONY: help build up down logs shell exec pull-model test clean fireform
 
 help:
 	@printf '%s\n' \
@@ -11,6 +11,7 @@ help:
 	@echo ""
 	@echo "Fireform Development Commands"
 	@echo "=============================="
+	@echo "make fireform     - Build and start containers, then open a shell"
 	@echo "make build        - Build Docker images"
 	@echo "make up           - Start all containers"
 	@echo "make down         - Stop all containers"
@@ -19,7 +20,12 @@ help:
 	@echo "make exec         - Execute Python script in container"
 	@echo "make pull-model   - Pull Mistral model into Ollama"
 	@echo "make test         - Run tests"
-	@echo "make clean        - Remove containers, volumes, and images"
+	@echo "make clean        - Remove containers"
+	@echo "make super-clean  - [CAUTION] Use carefully. Cleans up ALL stopped  containers, networks, build cache..."
+
+fireform: build up
+	@echo "Launching interactive shell in the app container..."
+	docker compose exec app /bin/bash
 
 build:
 	docker compose build
@@ -53,4 +59,6 @@ test:
 
 clean:
 	docker compose down -v
-	docker system prune -f
+super-clean:
+	docker compose down -v
+	docker system prune 

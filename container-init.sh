@@ -6,7 +6,7 @@ cat << 'EOF'
  / __/  / // /  /  __/ / __/ / /_/ / /  / / / / / /
 /_/    /_//_/   \___/ /_/    \____/_/  /_/ /_/ /_/ 
 EOF
-echo "Make sure to have docker installed"echo "Make sure to have docker installed"
+echo "Make sure to have docker installed"
 echo "Building containers..."
 echo "============================================"
 make build

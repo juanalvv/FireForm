@@ -9,7 +9,7 @@ services:
     networks:
       - fireform-network
     healthcheck:
-      test: ["CMD-SHELL", "ollama list || exit 0"]
+      test: ["CMD-SHELL", "ollama ps"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -24,8 +24,7 @@ services:
       ollama:
         condition: service_healthy
     volumes:
-      - ./src:/app/src
-      - ./data:/app/data
+      - .:/app
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
