@@ -5,7 +5,7 @@ First of all, thank you for considering contributing to FireForm! It's people li
 FireForm is a Digital Public Good (DPG) designed to reduce administrative overhead for firefighters and other emergency services. By contributing, you are helping us build a more efficient future for emergency response.
 
 >**NOTE: Before you contribute!**
->Please note that this project is still under early development. Because of this you may find many bugs caused either by cases yet unaddressed that we are aware of. Reports on these bugs will be >dismissed to remove clutter, so please don't feel discouraged if your issue is dismissed quickly, it just means we were already aware of the bug.
+>Please note that this project is still under early development. Because of this you may find many bugs caused either by cases yet unaddressed that we are aware of. Reports on these bugs will be dismissed to remove clutter, so please don't feel discouraged if your issue is dismissed quickly, it just means we were already aware of the bug.
 
 ## 🌈 Code of Conduct
 
