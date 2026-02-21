@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 import requests
 from json_manager import JsonManager
 from input_manager import InputManager
@@ -8,21 +9,25 @@ from pdfrw import PdfReader, PdfWriter
 
 
 class textToJSON():
-    def __init__(self, transcript_text, target_fields, json={}):
-        self.__transcript_text = transcript_text # str
-        self.__target_fields = target_fields # List, contains the template field.
-        self.__json = json # dictionary
+    def __init__(self, transcript_text, target_fields, json=None):
+        self.__transcript_text = transcript_text  # str
+        self.__target_fields = target_fields  # List, contains the template field.
+        self.__json = json if json is not None else {}  # Avoid mutable default
         self.type_check_all()
         self.main_loop()
 
     
     def type_check_all(self):
-        if type(self.__transcript_text) != str:
-            raise TypeError(f"ERROR in textToJSON() ->\
-                Transcript must be text. Input:\n\ttranscript_text: {self.__transcript_text}")
-        elif type(self.__target_fields) != list:  
-            raise TypeError(f"ERROR in textToJSON() ->\
-                Target fields must be a list. Input:\n\ttarget_fields: {self.__target_fields}")
+        if not isinstance(self.__transcript_text, str):
+            raise TypeError(
+                f"ERROR in textToJSON() -> Transcript must be text. "
+                f"Input:\n\ttranscript_text: {self.__transcript_text}"
+            )
+        if not isinstance(self.__target_fields, list):
+            raise TypeError(
+                f"ERROR in textToJSON() -> Target fields must be a list. "
+                f"Input:\n\ttarget_fields: {self.__target_fields}"
+            )
 
    
     def build_prompt(self, current_field):
@@ -76,50 +81,60 @@ class textToJSON():
         return None
 
     def add_response_to_json(self, field, value):
-        """ 
-            this method adds the following value under the specified field, 
-            or under a new field if the field doesn't exist, to the json dict 
+        """Parse an LLM response and store it in the result dictionary.
+
+        Args:
+            field: The target field name.
+            value: The raw string response from the LLM.
+
+        Behavior:
+            - If the LLM returned "-1", the field is skipped entirely.
+            - If the value contains ";", it is split into a list.
+            - Duplicate fields are merged into a list.
         """
         value = value.strip().replace('"', '')
-        parsed_value = None
-        plural = False
- 
-        if value != "-1":
-            parsed_value = value       
-        
+
+        # Skip fields the LLM could not resolve
+        if value == "-1":
+            return
+
+        # Parse plural vs singular values
         if ";" in value:
             parsed_value = self.handle_plural_values(value)
-            plural = True
+        else:
+            parsed_value = value
 
-
-        if field in self.__json.keys():
-            self.__json[field].append(parsed_value)
-        else: 
+        # Merge into existing field or create new entry
+        if field in self.__json:
+            existing = self.__json[field]
+            if isinstance(existing, list):
+                existing.append(parsed_value)
+            else:
+                self.__json[field] = [existing, parsed_value]
+        else:
             self.__json[field] = parsed_value
-                
-        return
 
     def handle_plural_values(self, plural_value):
-        """ 
-            This method handles plural values.
-            Takes in strings of the form 'value1; value2; value3; ...; valueN' 
-            returns a list with the respective values -> [value1, value2, value3, ..., valueN]
+        """Split a semicolon-separated string into a cleaned list.
+
+        Args:
+            plural_value: A string of the form 'value1; value2; ...; valueN'.
+
+        Returns:
+            A list of stripped strings: ['value1', 'value2', ..., 'valueN'].
+
+        Raises:
+            ValueError: If the input does not contain a semicolon.
         """
         if ";" not in plural_value:
-            raise ValueError(f"Value is not plural, doesn't have ; separator, Value: {plural_value}")
-        
-        print(f"\t[LOG]: Formating plural values for JSON, [For input {plural_value}]...")
-        values = plural_value.split(";")
-        
-        # Remove trailing leading whitespace
-        for i in range(len(values)):
-            current = i+1 
-            if current < len(values):
-                clean_value = values[current].lstrip()
-                values[current] = clean_value
+            raise ValueError(
+                f"Value is not plural, missing ';' separator. Value: {plural_value}"
+            )
 
+        print(f"\t[LOG]: Formatting plural values for JSON, [For input {plural_value}]...")
+        values = [v.strip() for v in plural_value.split(";")]
         print(f"\t[LOG]: Resulting formatted list of values: {values}")
-        
+
         return values
         
 
@@ -127,27 +142,37 @@ class textToJSON():
         return self.__json
 
 class Fill():
-    def __init__(self):
-        pass
-    
-    def fill_form(user_input: str, definitions: list, pdf_form: str):
-        """
-        Fill a PDF form with values from user_input using testToJSON.
-        Fields are filled in the visual order (top-to-bottom, left-to-right).
-        """
+    """Coordinates the full pipeline from text extraction to PDF writing."""
 
-        output_pdf = pdf_form[:-4] + "_filled.pdf"
+    @staticmethod
+    def fill_form(user_input: str, definitions: list, pdf_form: str) -> str:
+        """Fill a PDF form with values extracted from natural-language text.
 
-        # Generate dictionary of answers from your original function 
+        Uses the textToJSON engine to extract field values via the LLM, then
+        writes them into the PDF form fields in visual order
+        (top-to-bottom, left-to-right).
+
+        Args:
+            user_input: Raw natural-language text describing the incident.
+            definitions: List of field description strings to extract.
+            pdf_form: Path to the fillable PDF template.
+
+        Returns:
+            Path to the newly created filled PDF file.
+        """
+        pdf_path = pathlib.Path(pdf_form)
+        output_pdf = str(pdf_path.with_stem(pdf_path.stem + "_filled"))
+
+        # Generate dictionary of answers from the LLM extraction engine
         t2j = textToJSON(user_input, definitions)
-        textbox_answers = t2j.get_data()  # This is a dictionary
+        textbox_answers = t2j.get_data()
 
         answers_list = list(textbox_answers.values())
 
-        # Read PDF 
+        # Read PDF
         pdf = PdfReader(pdf_form)
 
-        # Loop through pages 
+        # Loop through pages and fill fields in visual order
         for page in pdf.pages:
             if page.Annots:
                 sorted_annots = sorted(
@@ -158,17 +183,13 @@ class Fill():
                 i = 0
                 for annot in sorted_annots:
                     if annot.Subtype == '/Widget' and annot.T:
-                        field_name = annot.T[1:-1]
-                        
                         if i < len(answers_list):
                             annot.V = f'{answers_list[i]}'
                             annot.AP = None
                             i += 1
                         else:
-                            # Stop if we run out of answers
-                            break 
+                            break
 
         PdfWriter().write(output_pdf, pdf)
-        
-        # Your main.py expects this function to return the path
+
         return output_pdf
