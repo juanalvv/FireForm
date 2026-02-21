@@ -47,12 +47,13 @@ class textToJSON():
         return prompt
 
     def main_loop(self): #FUTURE -> Refactor this to its own class
+        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+        ollama_url = f"{ollama_host}/api/generate"
+        
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
             # print(prompt)
             # ollama_url = "http://localhost:11434/api/generate"
-            ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-            ollama_url = f"{ollama_host}/api/generate"
 
             payload = {
                 "model": "mistral",
