@@ -1,5 +1,5 @@
-requests
-pdfrw
-flask
-commonforms
-
+requests==2.32.5
+pdfrw==0.4
+flask==3.1.3
+commonforms==0.2.1
+pypdf==6.7.1
