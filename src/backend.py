@@ -8,7 +8,9 @@ from pdfrw import PdfReader, PdfWriter
 
 
 class textToJSON():
-    def __init__(self, transcript_text, target_fields, json={}):
+    def __init__(self, transcript_text, target_fields, json=None):
+        if json is None:
+            json = {}
         self.__transcript_text = transcript_text # str
         self.__target_fields = target_fields # List, contains the template field.
         self.__json = json # dictionary
