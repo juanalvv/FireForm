@@ -9,8 +9,8 @@ class JsonManager():
             with open(path_to_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except FileNotFoundError:
-            print(f"Warning: File not found at {path_to_file}. Returning empty list.")
-            data = []
+            print(f"Warning: File not found at {path_to_file}. Returning empty dictionary.")
+            data = {}
         except json.DecodeError:
             raise IOError(f"JSON file at {path_to_file} is corrupted.")
         
