@@ -113,10 +113,7 @@ class textToJSON():
         
         # Remove trailing leading whitespace
         for i in range(len(values)):
-            current = i+1 
-            if current < len(values):
-                clean_value = values[current].lstrip()
-                values[current] = clean_value
+            values[i] = values[i].lstrip()
 
         print(f"\t[LOG]: Resulting formatted list of values: {values}")
         
