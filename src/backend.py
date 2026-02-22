@@ -147,7 +147,8 @@ class Fill():
         # Read PDF 
         pdf = PdfReader(pdf_form)
 
-        # Loop through pages 
+        # Loop through pages
+        i = 0
         for page in pdf.pages:
             if page.Annots:
                 sorted_annots = sorted(
@@ -155,7 +156,6 @@ class Fill():
                     key=lambda a: (-float(a.Rect[1]), float(a.Rect[0]))
                 )
 
-                i = 0
                 for annot in sorted_annots:
                     if annot.Subtype == '/Widget' and annot.T:
                         field_name = annot.T[1:-1]
