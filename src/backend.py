@@ -8,10 +8,10 @@ from pdfrw import PdfReader, PdfWriter
 
 
 class textToJSON():
-    def __init__(self, transcript_text, target_fields, json={}):
+    def __init__(self, transcript_text, target_fields, initial_data=None):
         self.__transcript_text = transcript_text # str
         self.__target_fields = target_fields # List, contains the template field.
-        self.__json = json # dictionary
+        self.__json = initial_data if initial_data is not None else {} # dictionary
         self.type_check_all()
         self.main_loop()
 
@@ -29,42 +29,46 @@ class textToJSON():
         """ 
             This method is in charge of the prompt engineering. It creates a specific prompt for each target field. 
             @params: current_field -> represents the current element of the json that is being prompted.
+            Returns a tuple of (system_message, user_message) for structured chat API usage.
         """
-        prompt = f""" 
-            SYSTEM PROMPT:
-            You are an AI assistant designed to help fillout json files with information extracted from transcribed voice recordings. 
-            You will receive the transcription, and the name of the JSON field whose value you have to identify in the context. Return 
-            only a single string containing the identified value for the JSON field. 
-            If the field name is plural, and you identify more than one possible value in the text, return both separated by a ";".
-            If you don't identify the value in the provided text, return "-1".
-            ---
-            DATA:
-            Target JSON field to find in text: {current_field}
-            
-            TEXT: {self.__transcript_text}
-            """
+        system_msg = (
+            "You are an AI assistant designed to help fill out JSON files with "
+            "information extracted from transcribed voice recordings. You will "
+            "receive the transcription, and the name of the JSON field whose "
+            "value you have to identify in the context. Return only a single "
+            "string containing the identified value for the JSON field. "
+            "If the field name is plural, and you identify more than one "
+            'possible value in the text, return both separated by a ";". '
+            'If you don\'t identify the value in the provided text, return "-1".'
+        )
+        user_msg = (
+            f"Target JSON field to find in text: {current_field}\n\n"
+            f"TEXT: {self.__transcript_text}"
+        )
 
-        return prompt
+        return system_msg, user_msg
 
     def main_loop(self): #FUTURE -> Refactor this to its own class
         for field in self.__target_fields:
-            prompt = self.build_prompt(field)
-            # print(prompt)
-            # ollama_url = "http://localhost:11434/api/generate"
+            system_msg, user_msg = self.build_prompt(field)
+            # print(system_msg, user_msg)
             ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-            ollama_url = f"{ollama_host}/api/generate"
+            ollama_url = f"{ollama_host}/api/chat"
 
             payload = {
                 "model": "mistral",
-                "prompt": prompt,
-                "stream": False # don't really know why --> look into this later.
+                "messages": [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg}
+                ],
+                "stream": False
             }
 
             response = requests.post(ollama_url, json=payload)
 
             # parse response
             json_data = response.json()
-            parsed_response = json_data['response']
+            parsed_response = json_data['message']['content']
             # print(parsed_response)
             self.add_response_to_json(field, parsed_response)
             
@@ -84,12 +88,13 @@ class textToJSON():
         parsed_value = None
         plural = False
  
-        if value != "-1":
-            parsed_value = value       
-        
-        if ";" in value:
+        if value == "-1":
+            parsed_value = None
+        elif ";" in value:
             parsed_value = self.handle_plural_values(value)
             plural = True
+        else:
+            parsed_value = value
 
 
         if field in self.__json.keys():
@@ -130,6 +135,7 @@ class Fill():
     def __init__(self):
         pass
     
+    @staticmethod
     def fill_form(user_input: str, definitions: list, pdf_form: str):
         """
         Fill a PDF form with values from user_input using testToJSON.
