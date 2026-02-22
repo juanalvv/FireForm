@@ -53,9 +53,10 @@ class textToJSON():
             # ollama_url = "http://localhost:11434/api/generate"
             ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
             ollama_url = f"{ollama_host}/api/generate"
+            model_name = os.getenv("OLLAMA_MODEL", "mistral")
 
             payload = {
-                "model": "mistral",
+                "model": model_name,
                 "prompt": prompt,
                 "stream": False # don't really know why --> look into this later.
             }
