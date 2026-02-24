@@ -8,12 +8,6 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - fireform-network
-    healthcheck:
-      test: ["CMD-SHELL", "ollama ps"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
 
   app:
     build:
@@ -21,14 +15,14 @@ services:
       dockerfile: Dockerfile
     container_name: fireform-app
     depends_on:
-      ollama:
-        condition: service_healthy
+      - ollama
     volumes:
       - .:/app
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
       - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=mistral
     networks:
       - fireform-network
     stdin_open: true
