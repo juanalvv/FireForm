@@ -2,4 +2,6 @@ requests
 pdfrw
 flask
 commonforms
+pypdf
+ollama
 
