@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from requests.exceptions import Timeout, RequestException
 from json_manager import JsonManager
 from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
@@ -47,6 +48,9 @@ class textToJSON():
         return prompt
 
     def main_loop(self): #FUTURE -> Refactor this to its own class
+        timeout = int(os.getenv("OLLAMA_TIMEOUT", "30"))
+        max_retries = int(os.getenv("OLLAMA_MAX_RETRIES", "3"))
+
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
             # print(prompt)
@@ -60,10 +64,26 @@ class textToJSON():
                 "stream": False # don't really know why --> look into this later.
             }
 
-            response = requests.post(ollama_url, json=payload)
+            json_data = None
+            for attempt in range(max_retries):
+                try:
+                    response = requests.post(
+                        ollama_url,
+                        json=payload,
+                        timeout=timeout
+                    )
+                    response.raise_for_status()
+                    json_data = response.json()
+                    break
+                except Timeout:
+                    print(f"Ollama request timed out (attempt {attempt+1})")
+                except RequestException as e:
+                    print(f"Ollama request failed: {e}")
+            
+            if json_data is None:
+                raise RuntimeError("Failed to get response from Ollama after retries.")
 
             # parse response
-            json_data = response.json()
             parsed_response = json_data['response']
             # print(parsed_response)
             self.add_response_to_json(field, parsed_response)
