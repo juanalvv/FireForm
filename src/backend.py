@@ -5,13 +5,43 @@ from json_manager import JsonManager
 from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
 
+class OllamaClient:
+    def __init__(self, model_name="mistral"):
+        self.host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+        self.url = f"{self.host}/api/generate"
+        self.model = model_name
+
+    def generate(self, prompt):
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        try:
+            # added a timeout so it doesn't hang forever on slow setups
+            response = requests.post(self.url, json=payload, timeout=120)
+            response.raise_for_status() 
+            
+            json_data = response.json()
+            return json_data.get('response', '-1')
+            
+        except Exception as e:
+            print(f"\t[ERROR] Ollama connection failed: {e}")
+            return "-1"
 
 
 class textToJSON():
-    def __init__(self, transcript_text, target_fields, json={}):
-        self.__transcript_text = transcript_text # str
-        self.__target_fields = target_fields # List, contains the template field.
-        self.__json = json # dictionary
+    def __init__(self, transcript_text, target_fields, json=None):
+        if json is None:
+            json = {}
+            
+        self.__transcript_text = transcript_text 
+        self.__target_fields = target_fields 
+        self.__json = json 
+        
+        self.llm_client = OllamaClient("mistral")
+        
         self.type_check_all()
         self.main_loop()
 
@@ -46,26 +76,12 @@ class textToJSON():
 
         return prompt
 
-    def main_loop(self): #FUTURE -> Refactor this to its own class
+    def main_loop(self):
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
-            # print(prompt)
-            # ollama_url = "http://localhost:11434/api/generate"
-            ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-            ollama_url = f"{ollama_host}/api/generate"
-
-            payload = {
-                "model": "mistral",
-                "prompt": prompt,
-                "stream": False # don't really know why --> look into this later.
-            }
-
-            response = requests.post(ollama_url, json=payload)
-
-            # parse response
-            json_data = response.json()
-            parsed_response = json_data['response']
-            # print(parsed_response)
+            
+            # get the response from our new client
+            parsed_response = self.llm_client.generate(prompt)
             self.add_response_to_json(field, parsed_response)
             
         print("----------------------------------")
