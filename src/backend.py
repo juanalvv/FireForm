@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 import requests
 from json_manager import JsonManager
 from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -68,10 +71,8 @@ class textToJSON():
             # print(parsed_response)
             self.add_response_to_json(field, parsed_response)
             
-        print("----------------------------------")
-        print("\t[LOG] Resulting JSON created from the input text:")
-        print(json.dumps(self.__json, indent=2))
-        print("--------- extracted data ---------")
+        logger.info("Extraction complete. %d fields populated.", len(self.__json))
+        logger.debug("Extracted JSON: %s", json.dumps(self.__json, indent=2))
 
         return None
 
@@ -108,17 +109,17 @@ class textToJSON():
         if ";" not in plural_value:
             raise ValueError(f"Value is not plural, doesn't have ; separator, Value: {plural_value}")
         
-        print(f"\t[LOG]: Formating plural values for JSON, [For input {plural_value}]...")
+        logger.debug("Parsing plural value into list.")
         values = plural_value.split(";")
-        
+
         # Remove trailing leading whitespace
         for i in range(len(values)):
-            current = i+1 
+            current = i+1
             if current < len(values):
                 clean_value = values[current].lstrip()
                 values[current] = clean_value
 
-        print(f"\t[LOG]: Resulting formatted list of values: {values}")
+        logger.debug("Parsed %d values from plural field.", len(values))
         
         return values
         
