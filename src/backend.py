@@ -92,9 +92,13 @@ class textToJSON():
             plural = True
 
 
-        if field in self.__json.keys():
-            self.__json[field].append(parsed_value)
-        else: 
+        if field in self.__json:
+            existing = self.__json[field]
+            if isinstance(existing, list):
+                existing.append(parsed_value)
+            else:
+                self.__json[field] = [existing, parsed_value]
+        else:
             self.__json[field] = parsed_value
                 
         return
@@ -130,6 +134,7 @@ class Fill():
     def __init__(self):
         pass
     
+    @staticmethod
     def fill_form(user_input: str, definitions: list, pdf_form: str):
         """
         Fill a PDF form with values from user_input using testToJSON.
