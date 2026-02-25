@@ -1,5 +1,6 @@
 requests
 pdfrw
 flask
-commonforms
+# commonforms
+pydantic>=2.0
 
