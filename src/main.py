@@ -2,6 +2,8 @@ import os
 from backend import Fill  
 from commonforms import prepare_form 
 from pypdf import PdfReader
+from pathlib import Path
+from typing import Union
 
 def input_fields(num_fields: int):
     fields = []
@@ -10,7 +12,7 @@ def input_fields(num_fields: int):
         fields.append(field)
     return fields
 
-def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str):
+def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: Union[str, os.PathLike]):
     """
     This function is called by the frontend server.
     It receives the raw data, runs the PDF filling logic,
@@ -19,6 +21,9 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
     
     print("[1] Received request from frontend.")
     print(f"[2] PDF template path: {pdf_form_path}")
+    
+    # Normalize Path/PathLike to a plain string for downstream code
+    pdf_form_path = os.fspath(pdf_form_path)
     
     if not os.path.exists(pdf_form_path):
         print(f"Error: PDF template not found at {pdf_form_path}")
@@ -45,11 +50,14 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
 
 
 if __name__ == "__main__":
-    file = "/app/src/inputs/file.pdf"
+    BASE_DIR = Path(__file__).resolve().parent
+    file = BASE_DIR / "inputs" / "file.pdf"
+    prepared_pdf = BASE_DIR / "temp_outfile.pdf"
+    
+    #file = "/Users/vincentharkins/Desktop/FireForm/src/inputs/file.pdf"
     user_input = "Hi. The employee's name is John Doe. His job title is managing director. His department supervisor is Jane Doe. His phone number is 123456. His email is jdoe@ucsc.edu. The signature is <Mamañema>, and the date is 01/02/2005"
     descriptions = ["Employee's name", "Employee's job title", "Employee's department supervisor", "Employee's phone number", "Employee's email", "Signature", "Date"]
-    prepared_pdf = "temp_outfile.pdf"
-    prepare_form(file,prepared_pdf)
+    prepare_form(str(file), str(prepared_pdf))
     
     reader = PdfReader(prepared_pdf)
     fields = reader.get_fields()
@@ -58,8 +66,6 @@ if __name__ == "__main__":
     else:
         num_fields = 0
         
+    descriptions = input_fields(num_fields) # Uncomment to edit fields
     
-    
-    #descriptions = input_fields(num_fields) # Uncomment to edit fields
-    
-    run_pdf_fill_process(user_input, descriptions, file)
+    run_pdf_fill_process(user_input, descriptions, str(file))
