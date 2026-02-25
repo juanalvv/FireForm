@@ -26,7 +26,7 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
 
     print("[3] Starting extraction and PDF filling process...")
     try:
-        output_name = Fill.fill_form(
+        output_name = Fill.fill_form
             user_input=user_input,
             definitions=definitions,
             pdf_form=pdf_form_path
@@ -45,7 +45,7 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
 
 
 if __name__ == "__main__":
-    file = "[ENTER_DIR_HERE]/FireForm/src/inputs/file.pdf"
+    file = "/app/src/inputs/file.pdf"
     user_input = "Hi. The employee's name is John Doe. His job title is managing director. His department supervisor is Jane Doe. His phone number is 123456. His email is jdoe@ucsc.edu. The signature is <Mamañema>, and the date is 01/02/2005"
     descriptions = ["Employee's name", "Employee's job title", "Employee's department supervisor", "Employee's phone number", "Employee's email", "Signature", "Date"]
     prepared_pdf = "temp_outfile.pdf"
