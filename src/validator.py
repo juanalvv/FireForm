@@ -6,6 +6,12 @@ def validate_json(data: dict, expected_fields: list):
     - Invalid values ("-1", empty string) are normalized to None
     """
 
+    if not isinstance(data, dict):
+        raise TypeError("data must be a dictionary")
+
+    if not isinstance(expected_fields, list):
+        raise TypeError("expected_fields must be a list")
+
     validated = {}
 
     for field in expected_fields:
