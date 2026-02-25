@@ -62,6 +62,13 @@ class TestParseLlmResponse:
         assert value == "just some plain text"
         assert confidence == 0.0
 
+    def test_malformed_json_warns_to_stderr(self, capsys):
+        t2j = make_t2j()
+        t2j.parse_llm_response("not valid json")
+        captured = capsys.readouterr()
+        assert "[WARNING]" in captured.err
+        assert "Failed to parse" in captured.err
+
     def test_missing_value_key(self):
         t2j = make_t2j()
         raw = '{"confidence": 0.8}'
@@ -108,14 +115,14 @@ class TestAddResponseToJson:
         t2j = make_t2j()
         t2j.add_response_to_json("uncertain", "maybe", 0.3)
         captured = capsys.readouterr()
-        assert "[WARNING]" in captured.out
-        assert "0.3" in captured.out
+        assert "[WARNING]" in captured.err
+        assert "0.3" in captured.err
 
     def test_high_confidence_no_warning(self, capsys):
         t2j = make_t2j()
         t2j.add_response_to_json("certain", "definitely", 0.95)
         captured = capsys.readouterr()
-        assert "[WARNING]" not in captured.out
+        assert "[WARNING]" not in captured.err
 
     def test_duplicate_field_becomes_list(self):
         t2j = make_t2j()

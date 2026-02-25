@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import requests
 from json_manager import JsonManager
 from input_manager import InputManager
@@ -60,6 +61,7 @@ class textToJSON():
             confidence = max(0.0, min(1.0, confidence))
             return value, confidence
         except (json.JSONDecodeError, ValueError, TypeError):
+            print(f"\t[WARNING] Failed to parse LLM response as JSON: {raw_response[:100]}", file=sys.stderr)
             return raw_response.strip(), 0.0
 
     def main_loop(self): #FUTURE -> Refactor this to its own class
@@ -106,7 +108,7 @@ class textToJSON():
             parsed_value = self.handle_plural_values(value)
 
         if confidence < 0.5:
-            print(f"\t[WARNING] Low confidence ({confidence}) for field '{field}'")
+            print(f"\t[WARNING] Low confidence ({confidence}) for field '{field}'", file=sys.stderr)
 
         entry = {"value": parsed_value, "confidence": confidence}
 
