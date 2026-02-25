@@ -11,7 +11,7 @@ def input_fields(num_fields: int):
         fields.append(field)
     return fields
 
-def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str):
+def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: Union[str, os.PathLike]):
     """
     This function is called by the frontend server.
     It receives the raw data, runs the PDF filling logic,
@@ -20,6 +20,9 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
     
     print("[1] Received request from frontend.")
     print(f"[2] PDF template path: {pdf_form_path}")
+    
+    # Normalize Path/PathLike to a plain string for downstream code
+    pdf_form_path = os.fspath(pdf_form_path)
     
     if not os.path.exists(pdf_form_path):
         print(f"Error: PDF template not found at {pdf_form_path}")

@@ -24,12 +24,30 @@ The result is hours of time saved per shift, per firefighter.
 
 Open-Source (DPG): Built 100% with open-source tools to be a true Digital Public Good, freely available for any department to adopt and modify.
 
+## 🤝 Code of Conduct
+
+We are committed to providing a friendly, safe, and welcoming environment for all. Please see our [Code of Conduct](CODE_OF_CONDUCT.md) for more information.
+
+## 🚀 Contributing
+
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) to learn how you can help.
+
 ## ⚖️ License
+
+
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## 🏆 Acknowledgements and Contributors
 This project was built in 48 hours for the Reboot the Earth 2025 hackathon. Thank you to the United Nations and UC Santa Cruz for hosting this incredible event and inspiring us to build solutions for a better future.
+
+## 📜 Citation
+
+If you use FireForm in your research or project, please cite it using the following metadata:
+
+[![Cite this repository](https://img.shields.io/badge/Cite-FireForm-blue.svg)](CITATION.cff)
+
+You can also use the "Cite this repository" button in the GitHub repository sidebar to export the citation in your preferred format.
 
 __Contributors:__ 
 - Juan Álvarez Sánchez (@juanalvv)

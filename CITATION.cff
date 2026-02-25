@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Álvarez Sánchez"
+  given-names: "Juan"
+- family-names: "Carriedo Garrido"
+  given-names: "Manuel"
+- family-names: "Harkins"
+  given-names: "Vincent"
+- family-names: "Vergés Santiago"
+  given-names: "Marc"
+- family-names: "Sans Domingo"
+  given-names: "Jan"
+title: "FireForm"
+version: 1.0.0
+url: "https://github.com/juanalvv/FireForm"
+abstract: "FireForm is a Digital Public Good (DPG) designed to solve administrative overhead for first responders by automating PDF form filling using AI."
+keywords:
+  - "firefighter"
+  - "first responder"
+  - "AI"
+  - "automated reporting"
+  - "digital public good"
+license: MIT
