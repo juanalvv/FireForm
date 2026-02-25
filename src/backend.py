@@ -1,8 +1,17 @@
 import json
 import os
+import time
+import logging
 import requests
 from pdfrw import PdfReader, PdfWriter
 from validator import validate_json
+
+
+# ----------------------------------------------------------
+# Logging Setup
+# ----------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class textToJSON:
@@ -16,7 +25,7 @@ class textToJSON:
         self.__target_fields = target_fields
         self.__json = json or {}
 
-        # 🔥 Dependency injection (used in tests)
+        # Dependency injection (used in tests)
         self.llm_client = llm_client
 
         self.type_check_all()
@@ -42,11 +51,10 @@ TEXT:
 {self.__transcript_text}
 """
 
+    # ----------------------------------------------------------
+    # 🔥 Improved Ollama Call with Retry + Logging
+    # ----------------------------------------------------------
     def _call_ollama(self, prompt):
-        """
-        Real HTTP call to Ollama.
-        Only used in production (not during tests).
-        """
         ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         ollama_url = f"{ollama_host}/api/generate"
 
@@ -56,19 +64,37 @@ TEXT:
             "stream": False
         }
 
-        try:
-            response = requests.post(ollama_url, json=payload, timeout=30)
-            response.raise_for_status()
-            json_data = response.json()
-            return json_data.get("response", "-1")
-        except Exception:
-            return "-1"
+        max_retries = 3
+        delay_seconds = 2
 
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    ollama_url,
+                    json=payload,
+                    timeout=30
+                )
+                response.raise_for_status()
+                json_data = response.json()
+                return json_data.get("response", "-1")
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(
+                    f"Ollama request failed (attempt {attempt+1}/{max_retries}): {e}"
+                )
+                time.sleep(delay_seconds)
+
+        logger.error("Ollama request failed after maximum retries.")
+        return "-1"
+
+    # ----------------------------------------------------------
+    # Extraction Loop
+    # ----------------------------------------------------------
     def main_loop(self):
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
 
-            # 🔥 Use injected LLM for tests
+            # Use injected LLM for tests
             if self.llm_client:
                 parsed_response = self.llm_client.generate(prompt)
             else:
@@ -76,7 +102,7 @@ TEXT:
 
             self.add_response_to_json(field, parsed_response)
 
-        # 🔥 Schema validation before final output
+        # Schema validation before final output
         self.__json = validate_json(self.__json, self.__target_fields)
 
     def add_response_to_json(self, field, value):
