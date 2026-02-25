@@ -58,6 +58,14 @@ class TestEnvOverrides:
         cfg = _reload_config({"OLLAMA_MODEL": "llama3"})
         assert cfg.OLLAMA_MODEL == "llama3"
 
+    def test_ollama_api_path_override(self):
+        cfg = _reload_config({"OLLAMA_API_PATH": "/v2/generate"})
+        assert cfg.OLLAMA_API_PATH == "/v2/generate"
+
+    def test_output_pdf_suffix_override(self):
+        cfg = _reload_config({"OUTPUT_PDF_SUFFIX": "_output.pdf"})
+        assert cfg.OUTPUT_PDF_SUFFIX == "_output.pdf"
+
     def test_ollama_host_trailing_slash_stripped(self):
         cfg = _reload_config({"OLLAMA_HOST": "http://my-server:9999/"})
         assert cfg.OLLAMA_HOST == "http://my-server:9999"
