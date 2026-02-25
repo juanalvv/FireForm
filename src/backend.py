@@ -6,29 +6,32 @@ from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
 
 
-
-class textToJSON():
+class textToJSON:
     def __init__(self, transcript_text, target_fields, json={}):
-        self.__transcript_text = transcript_text # str
-        self.__target_fields = target_fields # List, contains the template field.
-        self.__json = json # dictionary
+        self.__transcript_text = transcript_text  # str
+        self.__target_fields = (
+            target_fields  # List, contains the template field.
+        )
+        self.__json = json  # dictionary
         self.type_check_all()
         self.main_loop()
 
-    
     def type_check_all(self):
         if type(self.__transcript_text) != str:
-            raise TypeError(f"ERROR in textToJSON() ->\
-                Transcript must be text. Input:\n\ttranscript_text: {self.__transcript_text}")
-        elif type(self.__target_fields) != list:  
-            raise TypeError(f"ERROR in textToJSON() ->\
-                Target fields must be a list. Input:\n\ttarget_fields: {self.__target_fields}")
+            raise TypeError(
+                f"ERROR in textToJSON() ->\
+                Transcript must be text. Input:\n\ttranscript_text: {self.__transcript_text}"
+            )
+        elif type(self.__target_fields) != list:
+            raise TypeError(
+                f"ERROR in textToJSON() ->\
+                Target fields must be a list. Input:\n\ttarget_fields: {self.__target_fields}"
+            )
 
-   
     def build_prompt(self, current_field):
-        """ 
-            This method is in charge of the prompt engineering. It creates a specific prompt for each target field. 
-            @params: current_field -> represents the current element of the json that is being prompted.
+        """
+        This method is in charge of the prompt engineering. It creates a specific prompt for each target field.
+        @params: current_field -> represents the current element of the json that is being prompted.
         """
         prompt = f""" 
             SYSTEM PROMPT:
@@ -46,28 +49,34 @@ class textToJSON():
 
         return prompt
 
-    def main_loop(self): #FUTURE -> Refactor this to its own class
+    def main_loop(self):  # FUTURE -> Refactor this to its own class
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
             # print(prompt)
             # ollama_url = "http://localhost:11434/api/generate"
-            ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+            ollama_host = os.getenv(
+                "OLLAMA_HOST", "http://localhost:11434"
+            ).rstrip("/")
             ollama_url = f"{ollama_host}/api/generate"
 
             payload = {
                 "model": "mistral",
                 "prompt": prompt,
-                "stream": False # don't really know why --> look into this later.
+                "stream": False,  # don't really know why --> look into this later.
             }
 
             response = requests.post(ollama_url, json=payload)
 
             # parse response
             json_data = response.json()
+            if "response" not in json_data:
+                raise ValueError(
+                    f"Invalid response from Ollama API: {json_data}"
+                )
             parsed_response = json_data['response']
             # print(parsed_response)
             self.add_response_to_json(field, parsed_response)
-            
+
         print("----------------------------------")
         print("\t[LOG] Resulting JSON created from the input text:")
         print(json.dumps(self.__json, indent=2))
@@ -76,60 +85,65 @@ class textToJSON():
         return None
 
     def add_response_to_json(self, field, value):
-        """ 
-            this method adds the following value under the specified field, 
-            or under a new field if the field doesn't exist, to the json dict 
+        """
+        this method adds the following value under the specified field,
+        or under a new field if the field doesn't exist, to the json dict
         """
         value = value.strip().replace('"', '')
         parsed_value = None
         plural = False
- 
+
         if value != "-1":
-            parsed_value = value       
-        
+            parsed_value = value
+
         if ";" in value:
             parsed_value = self.handle_plural_values(value)
             plural = True
 
-
         if field in self.__json.keys():
+            if not isinstance(self.__json[field], list):
+                self.__json[field] = [self.__json[field]]
             self.__json[field].append(parsed_value)
-        else: 
+        else:
             self.__json[field] = parsed_value
-                
+
         return
 
     def handle_plural_values(self, plural_value):
-        """ 
-            This method handles plural values.
-            Takes in strings of the form 'value1; value2; value3; ...; valueN' 
-            returns a list with the respective values -> [value1, value2, value3, ..., valueN]
+        """
+        This method handles plural values.
+        Takes in strings of the form 'value1; value2; value3; ...; valueN'
+        returns a list with the respective values -> [value1, value2, value3, ..., valueN]
         """
         if ";" not in plural_value:
-            raise ValueError(f"Value is not plural, doesn't have ; separator, Value: {plural_value}")
-        
-        print(f"\t[LOG]: Formating plural values for JSON, [For input {plural_value}]...")
+            raise ValueError(
+                f"Value is not plural, doesn't have ; separator, Value: {plural_value}"
+            )
+
+        print(
+            f"\t[LOG]: Formating plural values for JSON, [For input {plural_value}]..."
+        )
         values = plural_value.split(";")
-        
+
         # Remove trailing leading whitespace
         for i in range(len(values)):
-            current = i+1 
+            current = i + 1
             if current < len(values):
                 clean_value = values[current].lstrip()
                 values[current] = clean_value
 
         print(f"\t[LOG]: Resulting formatted list of values: {values}")
-        
+
         return values
-        
 
     def get_data(self):
         return self.__json
 
-class Fill():
+
+class Fill:
     def __init__(self):
         pass
-    
+
     def fill_form(user_input: str, definitions: list, pdf_form: str):
         """
         Fill a PDF form with values from user_input using testToJSON.
@@ -138,37 +152,37 @@ class Fill():
 
         output_pdf = pdf_form[:-4] + "_filled.pdf"
 
-        # Generate dictionary of answers from your original function 
+        # Generate dictionary of answers from your original function
         t2j = textToJSON(user_input, definitions)
         textbox_answers = t2j.get_data()  # This is a dictionary
 
         answers_list = list(textbox_answers.values())
 
-        # Read PDF 
+        # Read PDF
         pdf = PdfReader(pdf_form)
 
-        # Loop through pages 
+        # Loop through pages
         for page in pdf.pages:
             if page.Annots:
                 sorted_annots = sorted(
                     page.Annots,
-                    key=lambda a: (-float(a.Rect[1]), float(a.Rect[0]))
+                    key=lambda a: (-float(a.Rect[1]), float(a.Rect[0])),
                 )
 
                 i = 0
                 for annot in sorted_annots:
                     if annot.Subtype == '/Widget' and annot.T:
                         field_name = annot.T[1:-1]
-                        
+
                         if i < len(answers_list):
                             annot.V = f'{answers_list[i]}'
                             annot.AP = None
                             i += 1
                         else:
                             # Stop if we run out of answers
-                            break 
+                            break
 
         PdfWriter().write(output_pdf, pdf)
-        
+
         # Your main.py expects this function to return the path
         return output_pdf
