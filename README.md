@@ -24,6 +24,17 @@ The result is hours of time saved per shift, per firefighter.
 
 Open-Source (DPG): Built 100% with open-source tools to be a true Digital Public Good, freely available for any department to adopt and modify.
 
+## Configuration
+
+FireForm can be configured via environment variables. You can also create a `.env` file in the project root (see `.env.example`).
+
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `mistral` | LLM model to use |
+| `OLLAMA_API_PATH` | `/api/generate` | Ollama API endpoint path |
+| `OUTPUT_PDF_SUFFIX` | `_filled.pdf` | Suffix appended to filled PDFs |
+
 ## 🤝 Code of Conduct
 
 We are committed to providing a friendly, safe, and welcoming environment for all. Please see our [Code of Conduct](CODE_OF_CONDUCT.md) for more information.

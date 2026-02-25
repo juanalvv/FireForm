@@ -1,9 +1,9 @@
 import json
-import os
 import requests
 from json_manager import JsonManager
 from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
+import config
 
 
 
@@ -50,12 +50,10 @@ class textToJSON():
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
             # print(prompt)
-            # ollama_url = "http://localhost:11434/api/generate"
-            ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-            ollama_url = f"{ollama_host}/api/generate"
+            ollama_url = f"{config.OLLAMA_HOST}{config.OLLAMA_API_PATH}"
 
             payload = {
-                "model": "mistral",
+                "model": config.OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False # don't really know why --> look into this later.
             }
@@ -136,7 +134,7 @@ class Fill():
         Fields are filled in the visual order (top-to-bottom, left-to-right).
         """
 
-        output_pdf = pdf_form[:-4] + "_filled.pdf"
+        output_pdf = pdf_form[:-4] + config.OUTPUT_PDF_SUFFIX
 
         # Generate dictionary of answers from your original function 
         t2j = textToJSON(user_input, definitions)

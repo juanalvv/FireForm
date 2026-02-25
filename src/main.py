@@ -1,9 +1,9 @@
 import os
-from backend import Fill  
-from commonforms import prepare_form 
+from backend import Fill
+from commonforms import prepare_form
 from pypdf import PdfReader
-from pathlib import Path
 from typing import Union
+import config
 
 def input_fields(num_fields: int):
     fields = []
@@ -50,9 +50,8 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: Unio
 
 
 if __name__ == "__main__":
-    BASE_DIR = Path(__file__).resolve().parent
-    file = BASE_DIR / "inputs" / "file.pdf"
-    prepared_pdf = BASE_DIR / "temp_outfile.pdf"
+    file = config.DEFAULT_INPUT_PDF
+    prepared_pdf = config.DEFAULT_PREPARED_PDF
     
     #file = "/Users/vincentharkins/Desktop/FireForm/src/inputs/file.pdf"
     user_input = "Hi. The employee's name is John Doe. His job title is managing director. His department supervisor is Jane Doe. His phone number is 123456. His email is jdoe@ucsc.edu. The signature is <Mamañema>, and the date is 01/02/2005"
