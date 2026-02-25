@@ -108,3 +108,82 @@ class textToJSON():
         for field in self.__target_fields:
             ordered_data[field] = self.__json.get(field, "-1")
         return ordered_data
+    
+
+class Fill():
+    def __init__(self):
+        pass
+    
+    @staticmethod
+    def fill_form(user_input: str, definitions: list, pdf_form: str):
+        """
+        Fill a PDF form with values from user_input using textToJSON.
+        Fields are filled in the visual order (top-to-bottom, left-to-right).
+        """
+
+        output_pdf = pdf_form[:-4] + "_filled.pdf"
+
+        # 1. Generate dictionary of answers from the AI
+        t2j = textToJSON(user_input, definitions)
+        textbox_answers = t2j.get_data()  # This is a dictionary
+
+        # ---------------------------------------------------------
+        # 2. NEW: CLI FALLBACK (Human-in-the-Loop)
+        # ---------------------------------------------------------
+        print("\n\t[SYSTEM] Verifying extracted data completeness...")
+        
+        missing_fields = False
+        for field_name, extracted_value in textbox_answers.items():
+            if extracted_value == "-1":
+                if not missing_fields:
+                    print("\n\t⚠️ MISSING DATA DETECTED ⚠️")
+                    print("\tThe AI could not find all required fields in the transcript.")
+                    missing_fields = True
+                
+                # Prompt the user interactively in the terminal
+                user_correction = input(f"\t👉 Please enter the value for '{field_name}' (or press Enter to leave blank): ")
+                
+                # Update the dictionary with human input
+                if user_correction.strip() != "":
+                    textbox_answers[field_name] = user_correction.strip()
+                else:
+                    # If they leave it blank, replace "-1" with an empty string 
+                    # so the final PDF doesn't literally say "-1"
+                    textbox_answers[field_name] = ""
+                    
+        if not missing_fields:
+            print("\t✅ All fields successfully extracted!")
+        else:
+            print("\n\t✅ Manual data entry complete.")
+        # ---------------------------------------------------------
+
+        answers_list = list(textbox_answers.values())
+
+        # 3. Read and Fill PDF 
+        pdf = PdfReader(pdf_form)
+
+        # Loop through pages 
+        for page in pdf.pages:
+            if page.Annots:
+                sorted_annots = sorted(
+                    page.Annots,
+                    key=lambda a: (-float(a.Rect[1]), float(a.Rect[0]))
+                )
+
+                i = 0
+                for annot in sorted_annots:
+                    if annot.Subtype == '/Widget' and annot.T:
+                        # field_name = annot.T[1:-1]
+                        
+                        if i < len(answers_list):
+                            annot.V = f'{answers_list[i]}'
+                            annot.AP = None
+                            i += 1
+                        else:
+                            # Stop if we run out of answers
+                            break 
+
+        PdfWriter().write(output_pdf, pdf)
+        
+        # Your main.py expects this function to return the path
+        return output_pdf
