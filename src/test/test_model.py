@@ -2,7 +2,7 @@
 import ollama
 
 try:
-    response = ollama.chat(model='mistral', messages=[
+    response = ollama.chat(model='llama3:latest', messages=[
         {'role': 'user', 'content': 'Say hello in Spanish'}
     ])
     print("Success! Response:", response['message']['content'])
