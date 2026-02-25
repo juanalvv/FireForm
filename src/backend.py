@@ -109,15 +109,8 @@ class textToJSON():
             raise ValueError(f"Value is not plural, doesn't have ; separator, Value: {plural_value}")
         
         print(f"\t[LOG]: Formating plural values for JSON, [For input {plural_value}]...")
-        values = plural_value.split(";")
+        values = [v.strip() for v in plural_value.split(";")]
         
-        # Remove trailing leading whitespace
-        for i in range(len(values)):
-            current = i+1 
-            if current < len(values):
-                clean_value = values[current].lstrip()
-                values[current] = clean_value
-
         print(f"\t[LOG]: Resulting formatted list of values: {values}")
         
         return values
