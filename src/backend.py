@@ -1,80 +1,88 @@
 import json
 import os
 import requests
-from json_manager import JsonManager
-from input_manager import InputManager
 from pdfrw import PdfReader, PdfWriter
-from validator import validate_json   # 🔥 NEW IMPORT
+from validator import validate_json
 
 
-class textToJSON():
-    def __init__(self, transcript_text, target_fields, json={}):
+class textToJSON:
+    """
+    Converts transcript text into structured JSON using an LLM.
+    Supports dependency injection for testing.
+    """
+
+    def __init__(self, transcript_text, target_fields, json=None, llm_client=None):
         self.__transcript_text = transcript_text
         self.__target_fields = target_fields
-        self.__json = json
+        self.__json = json or {}
+
+        # 🔥 Dependency injection (used in tests)
+        self.llm_client = llm_client
+
         self.type_check_all()
         self.main_loop()
 
     def type_check_all(self):
-        if type(self.__transcript_text) != str:
-            raise TypeError(
-                f"ERROR in textToJSON() -> Transcript must be text.\n"
-                f"\ttranscript_text: {self.__transcript_text}"
-            )
-        elif type(self.__target_fields) != list:
-            raise TypeError(
-                f"ERROR in textToJSON() -> Target fields must be a list.\n"
-                f"\ttarget_fields: {self.__target_fields}"
-            )
+        if not isinstance(self.__transcript_text, str):
+            raise TypeError("Transcript must be text.")
+
+        if not isinstance(self.__target_fields, list):
+            raise TypeError("Target fields must be a list.")
 
     def build_prompt(self, current_field):
-        prompt = f"""
+        return f"""
 SYSTEM PROMPT:
-You are an AI assistant designed to help fill out JSON files with information extracted from transcribed voice recordings.
-You will receive the transcription and the name of the JSON field whose value you must identify.
+You are an AI assistant designed to extract a specific field value.
 Return only the value. If not found, return "-1".
 
-DATA:
-Target JSON field to find in text: {current_field}
+FIELD:
+{current_field}
 
-TEXT: {self.__transcript_text}
+TEXT:
+{self.__transcript_text}
 """
-        return prompt
 
-    def main_loop(self):
-
-        # Define once before loop (your earlier PR fix)
+    def _call_ollama(self, prompt):
+        """
+        Real HTTP call to Ollama.
+        Only used in production (not during tests).
+        """
         ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         ollama_url = f"{ollama_host}/api/generate"
 
+        payload = {
+            "model": "mistral",
+            "prompt": prompt,
+            "stream": False
+        }
+
+        try:
+            response = requests.post(ollama_url, json=payload, timeout=30)
+            response.raise_for_status()
+            json_data = response.json()
+            return json_data.get("response", "-1")
+        except Exception:
+            return "-1"
+
+    def main_loop(self):
         for field in self.__target_fields:
             prompt = self.build_prompt(field)
 
-            payload = {
-                "model": "mistral",
-                "prompt": prompt,
-                "stream": False
-            }
-
-            response = requests.post(ollama_url, json=payload)
-            json_data = response.json()
-            parsed_response = json_data.get("response", "-1")
+            # 🔥 Use injected LLM for tests
+            if self.llm_client:
+                parsed_response = self.llm_client.generate(prompt)
+            else:
+                parsed_response = self._call_ollama(prompt)
 
             self.add_response_to_json(field, parsed_response)
 
-        # 🔥 NEW: Enforce schema validation before returning data
+        # 🔥 Schema validation before final output
         self.__json = validate_json(self.__json, self.__target_fields)
 
-        print("----------------------------------")
-        print("\t[LOG] Resulting JSON created from the input text:")
-        print(json.dumps(self.__json, indent=2))
-        print("--------- extracted data ---------")
-
     def add_response_to_json(self, field, value):
+        value = (value or "").strip().replace('"', '')
 
-        value = value.strip().replace('"', '')
-
-        if value == "-1":
+        if value in ("-1", "", None):
             self.__json[field] = None
             return
 
@@ -87,15 +95,18 @@ TEXT: {self.__transcript_text}
         return self.__json
 
 
-class Fill():
+class Fill:
+    """
+    Handles PDF autofill using extracted and validated JSON data.
+    """
 
     @staticmethod
     def fill_form(user_input: str, definitions: list, pdf_form: str):
 
         output_pdf = pdf_form[:-4] + "_filled.pdf"
 
-        t2j = textToJSON(user_input, definitions)
-        textbox_answers = t2j.get_data()
+        extractor = textToJSON(user_input, definitions)
+        textbox_answers = extractor.get_data()
 
         answers_list = list(textbox_answers.values())
 
