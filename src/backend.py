@@ -3,8 +3,7 @@ import os
 import requests
 from json_manager import JsonManager
 from input_manager import InputManager
-from pdfrw import PdfReader, PdfWriter
-
+from pdfrw import PdfReader, PdfWriter, PdfName
 
 
 class textToJSON():
@@ -126,6 +125,101 @@ class textToJSON():
     def get_data(self):
         return self.__json
 
+def _get_pdf_field_value(annot):
+    """
+    Returns a best-effort string value from a PDF widget annotation.
+    Handles text fields + buttons (checkbox/radio) reasonably.
+    """
+    # Text-like fields usually store value in /V
+    if annot.V is not None:
+        try:
+            return str(annot.V).strip("()")
+        except Exception:
+            return str(annot.V)
+
+    # Buttons often store state in /AS (e.g., /Yes, /Off)
+    if annot.AS is not None:
+        return str(annot.AS)
+
+    return ""
+
+def _get_sorted_widget_annots(pdf):
+    """
+    Returns widget annotations in the same visual order used for filling:
+    page order, then top-to-bottom, left-to-right within each page.
+    """
+    ordered = []
+
+    for page in pdf.pages:
+        if not page.Annots:
+            continue
+
+        page_widgets = [
+            annot for annot in page.Annots
+            if str(getattr(annot, "Subtype", "")) == "/Widget"
+        ]
+
+        page_widgets = sorted(
+            page_widgets,
+            key=lambda a: (-float(a.Rect[1]), float(a.Rect[0]))
+        )
+        ordered.extend(page_widgets)
+
+    return ordered
+
+def verify_filled_pdf(output_pdf_path: str, expected_pairs: list):
+    """
+    expected_pairs: list of dicts like:
+      [{"field": "employee_name", "expected": "John Doe"}, ...]
+    Returns a report dict.
+    """
+    pdf = PdfReader(output_pdf_path)
+    annots = _get_sorted_widget_annots(pdf)
+
+    # Build actual list in same order (positional verification)
+    actual_pairs = []
+    for a in annots:
+        field_name = str(a.T).strip("()") if a.T else "<unnamed>"
+        actual_pairs.append({
+            "field": field_name,
+            "actual": _get_pdf_field_value(a)
+        })
+
+    # Compare expected vs actual by index (matches current pipeline design)
+    results = []
+    ok = mismatch = missing = 0
+
+    for i, exp in enumerate(expected_pairs):
+        exp_field = exp.get("field", f"field_{i}")
+        exp_val = str(exp.get("expected", ""))
+
+        act = actual_pairs[i] if i < len(actual_pairs) else {"field": "<missing_widget>", "actual": ""}
+        act_val = str(act.get("actual", ""))
+
+        if act_val == exp_val:
+            status = "ok"
+            ok += 1
+        elif act_val.strip() == "":
+            status = "missing"
+            missing += 1
+        else:
+            status = "mismatch"
+            mismatch += 1
+
+        results.append({
+            "index": i,
+            "expected_field": exp_field,
+            "pdf_field": act.get("field"),
+            "expected": exp_val,
+            "actual": act_val,
+            "status": status
+        })
+
+    return {
+        "summary": {"ok": ok, "missing": missing, "mismatch": mismatch},
+        "results": results
+    }
+    
 class Fill():
     def __init__(self):
         pass
@@ -147,28 +241,44 @@ class Fill():
         # Read PDF 
         pdf = PdfReader(pdf_form)
 
-        # Loop through pages 
-        for page in pdf.pages:
-            if page.Annots:
-                sorted_annots = sorted(
-                    page.Annots,
-                    key=lambda a: (-float(a.Rect[1]), float(a.Rect[0]))
-                )
+        sorted_annots = _get_sorted_widget_annots(pdf)
 
-                i = 0
-                for annot in sorted_annots:
-                    if annot.Subtype == '/Widget' and annot.T:
-                        field_name = annot.T[1:-1]
-                        
-                        if i < len(answers_list):
-                            annot.V = f'{answers_list[i]}'
-                            annot.AP = None
-                            i += 1
-                        else:
-                            # Stop if we run out of answers
-                            break 
+        expected_pairs = []
+        answer_index = 0
+        for annot in sorted_annots:
+            if not annot.T:
+                continue
+
+            if answer_index >= len(answers_list):
+                break
+
+            field_name = str(annot.T).strip("()")
+            assigned_value = str(answers_list[answer_index])
+
+            annot.V = assigned_value
+            annot.AP = None
+
+            expected_pairs.append({"field": field_name, "expected": assigned_value})
+            answer_index += 1
 
         PdfWriter().write(output_pdf, pdf)
-        
-        # Your main.py expects this function to return the path
+
+        report = verify_filled_pdf(output_pdf, expected_pairs)
+
+        print("\nVerification Summary:")
+        print(f"✔ ok: {report['summary']['ok']}")
+        print(f"⚠ missing: {report['summary']['missing']}")
+        print(f"✖ mismatch: {report['summary']['mismatch']}")
+
+#write a JSON report next to output PDF
+        try:
+            import json
+            verify_path = output_pdf + ".verify.json"
+            with open(verify_path, "w", encoding="utf-8") as f:
+                json.dump(report, f, indent=2)
+            print(f"Verification report saved to: {verify_path}")
+        except Exception as e:
+            print(f"(warn) Could not write verification report: {e}")
         return output_pdf
+
+

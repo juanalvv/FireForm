@@ -26,7 +26,7 @@ def run_pdf_fill_process(user_input: str, definitions: list, pdf_form_path: str)
 
     print("[3] Starting extraction and PDF filling process...")
     try:
-        output_name = Fill.fill_form
+        output_name = Fill.fill_form(
             user_input=user_input,
             definitions=definitions,
             pdf_form=pdf_form_path
