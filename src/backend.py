@@ -1,4 +1,3 @@
-import json
 import os
 import requests
 from pdfrw import PdfReader, PdfWriter
@@ -11,42 +10,36 @@ class textToJSON:
     Supports dependency injection for testing.
     """
 
-    def __init__(self, transcript_text, target_fields, json=None, llm_client=None):
+    def __init__(self, transcript_text, target_fields, json_data=None, llm_client=None):
         self.__transcript_text = transcript_text
         self.__target_fields = target_fields
-        self.__json = json or {}
-
-        # 🔥 Dependency injection (used in tests)
+        self.__json = json_data or {}
         self.llm_client = llm_client
 
-        self.type_check_all()
-        self.main_loop()
+        self._type_check()
+        self._run_extraction()
 
-    def type_check_all(self):
+    def _type_check(self):
         if not isinstance(self.__transcript_text, str):
-            raise TypeError("Transcript must be text.")
+            raise TypeError("Transcript must be a string.")
 
         if not isinstance(self.__target_fields, list):
             raise TypeError("Target fields must be a list.")
 
-    def build_prompt(self, current_field):
+    def _build_prompt(self, field):
         return f"""
 SYSTEM PROMPT:
-You are an AI assistant designed to extract a specific field value.
+Extract the value for the specified field from the transcript.
 Return only the value. If not found, return "-1".
 
 FIELD:
-{current_field}
+{field}
 
-TEXT:
+TRANSCRIPT:
 {self.__transcript_text}
 """
 
     def _call_ollama(self, prompt):
-        """
-        Real HTTP call to Ollama.
-        Only used in production (not during tests).
-        """
         ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         ollama_url = f"{ollama_host}/api/generate"
 
@@ -64,29 +57,26 @@ TEXT:
         except Exception:
             return "-1"
 
-    def main_loop(self):
+    def _run_extraction(self):
         for field in self.__target_fields:
-            prompt = self.build_prompt(field)
+            prompt = self._build_prompt(field)
 
-            # 🔥 Use injected LLM for tests
             if self.llm_client:
                 parsed_response = self.llm_client.generate(prompt)
             else:
                 parsed_response = self._call_ollama(prompt)
 
-            self.add_response_to_json(field, parsed_response)
+            self._add_response(field, parsed_response)
 
-        # 🔥 Schema validation before final output
+        # Apply schema validation after extraction
         self.__json = validate_json(self.__json, self.__target_fields)
 
-    def add_response_to_json(self, field, value):
+    def _add_response(self, field, value):
         value = (value or "").strip().replace('"', '')
 
         if value in ("-1", "", None):
             self.__json[field] = None
-            return
-
-        if ";" in value:
+        elif ";" in value:
             self.__json[field] = [v.strip() for v in value.split(";")]
         else:
             self.__json[field] = value
@@ -96,18 +86,12 @@ TEXT:
 
 
 class Fill:
-    """
-    Handles PDF autofill using extracted and validated JSON data.
-    """
-
     @staticmethod
     def fill_form(user_input: str, definitions: list, pdf_form: str):
-
         output_pdf = pdf_form[:-4] + "_filled.pdf"
 
         extractor = textToJSON(user_input, definitions)
         textbox_answers = extractor.get_data()
-
         answers_list = list(textbox_answers.values())
 
         pdf = PdfReader(pdf_form)
@@ -125,12 +109,11 @@ class Fill:
             for annot in sorted_annots:
                 if annot.Subtype == '/Widget' and annot.T:
                     if i < len(answers_list):
-                        annot.V = f'{answers_list[i]}'
+                        annot.V = f"{answers_list[i]}"
                         annot.AP = None
                         i += 1
                     else:
                         break
 
         PdfWriter().write(output_pdf, pdf)
-
         return output_pdf
