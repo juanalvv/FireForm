@@ -78,7 +78,7 @@ def extract_pdf_text(pdf_path: str) -> str:
 
 if __name__ == "__main__":
     BASE_DIR = Path(__file__).resolve().parent
-    pdf_file = BASE_DIR / "inputs" / "sample1.pdf"
+    pdf_file = BASE_DIR / "inputs" / "sample-2.pdf"
 
     # Step 1: Extract text from PDF
     print("[INFO] Extracting text from PDF...")
