@@ -24,6 +24,28 @@ The result is hours of time saved per shift, per firefighter.
 
 Open-Source (DPG): Built 100% with open-source tools to be a true Digital Public Good, freely available for any department to adopt and modify.
 
+## Prerequisites
+
+- Python 3.10+
+- pip
+- Ollama installed (if using local LLM)
+
+## Environment Variables
+
+Create a `.env` file:
+
+```
+LLM_MODEL=llama3
+LOG_LEVEL=INFO
+```
+
+## Error Handling
+
+The system validates:
+- Empty inputs
+- Missing PDF templates
+- Invalid AI JSON outputs
+
 ## 🤝 Code of Conduct
 
 We are committed to providing a friendly, safe, and welcoming environment for all. Please see our [Code of Conduct](CODE_OF_CONDUCT.md) for more information.
